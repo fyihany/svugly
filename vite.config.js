@@ -43,5 +43,6 @@ function svgProxyPlugin() {
 }
 
 export default defineConfig({
+  base: '/svugly/',
   plugins: [svgProxyPlugin()]
 });
