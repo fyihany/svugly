@@ -1,20 +1,22 @@
 /* Main entry point — wires all modules together */
 
-import { Importer } from './importer.js';
-import { Canvas } from './canvas.js';
-import { ElementTree } from './element-tree.js';
-import { Properties } from './properties.js';
-import { History } from './history.js';
-import { Exporter } from './exporter.js';
-import { CornerEditor } from './corner-editor.js';
+import { Importer } from "./importer.js";
+import { Canvas } from "./canvas.js";
+import { ElementTree } from "./element-tree.js";
+import { Properties } from "./properties.js";
+import { History } from "./history.js";
+import { Exporter } from "./exporter.js";
+import { CornerEditor } from "./corner-editor.js";
 
 // ─── State ───
 let canvas, tree, properties, history, exporter, cornerEditor;
 
 // ─── Screen switching ───
 function showScreen(screenId) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
+  document
+    .querySelectorAll(".screen")
+    .forEach((s) => s.classList.remove("active"));
+  document.getElementById(screenId).classList.add("active");
 }
 
 // ─── Save history snapshot ───
@@ -43,19 +45,25 @@ function restoreFromSnapshot(html) {
 }
 
 // ─── Init modules ───
+let isInitialized = false;
+
 function init() {
+  // Prevent double initialization (guard against HMR reconnection)
+  if (isInitialized) return;
+  isInitialized = true;
+
   // History
   history = new History();
   history.onChange = (canUndo, canRedo) => {
-    document.getElementById('btn-undo').disabled = !canUndo;
-    document.getElementById('btn-redo').disabled = !canRedo;
+    document.getElementById("btn-undo").disabled = !canUndo;
+    document.getElementById("btn-redo").disabled = !canRedo;
   };
 
   // Canvas
   canvas = new Canvas({
     onSelect: (el) => {
       if (el) {
-        const editorId = el.getAttribute('data-svg-editor-id');
+        const editorId = el.getAttribute("data-svg-editor-id");
         tree.selectByEditorId(editorId);
         properties.show(el);
       } else {
@@ -63,8 +71,8 @@ function init() {
       }
 
       // Corner editor: only available for <rect> elements
-      const isRect = el && el.tagName.toLowerCase() === 'rect';
-      const cornerBtn = document.getElementById('btn-corner-mode');
+      const isRect = el && el.tagName.toLowerCase() === "rect";
+      const cornerBtn = document.getElementById("btn-corner-mode");
       if (cornerBtn) cornerBtn.disabled = !isRect;
 
       if (!isRect && cornerEditor && cornerEditor.isActive) {
@@ -75,7 +83,7 @@ function init() {
     onHover: (el) => {
       // Optional: highlight in tree on hover
       if (el) {
-        const editorId = el.getAttribute('data-svg-editor-id');
+        const editorId = el.getAttribute("data-svg-editor-id");
         tree.highlightByEditorId(editorId);
       }
     },
@@ -83,7 +91,8 @@ function init() {
       saveSnapshot();
       if (canvas.getSVG()) tree.build(canvas.getSVG());
       if (el) properties.show(el);
-      document.getElementById('status-info').textContent = `Přesunuto <${el.tagName.toLowerCase()}>`;
+      document.getElementById("status-info").textContent =
+        `Přesunuto <${el.tagName.toLowerCase()}>`;
     },
     onTransformChange: () => {
       if (cornerEditor) cornerEditor.updatePositions();
@@ -97,8 +106,8 @@ function init() {
       properties.show(el);
 
       // Sync corner mode button state for tree-driven selection
-      const isRect = el && el.tagName.toLowerCase() === 'rect';
-      const cornerBtn = document.getElementById('btn-corner-mode');
+      const isRect = el && el.tagName.toLowerCase() === "rect";
+      const cornerBtn = document.getElementById("btn-corner-mode");
       if (cornerBtn) cornerBtn.disabled = !isRect;
       if (!isRect && cornerEditor && cornerEditor.isActive) {
         cornerEditor.deactivate();
@@ -130,7 +139,8 @@ function init() {
       properties.clear();
       canvas.clearSelection();
       if (canvas.getSVG()) tree.build(canvas.getSVG());
-      document.getElementById('status-info').textContent = `Deleted <${el.tagName.toLowerCase()}>`;
+      document.getElementById("status-info").textContent =
+        `Deleted <${el.tagName.toLowerCase()}>`;
     },
     onDuplicate: (el) => {
       if (!el) return;
@@ -141,7 +151,8 @@ function init() {
       if (canvas.getSVG()) tree.build(canvas.getSVG());
       canvas.highlightElement(clone);
       properties.show(clone);
-      document.getElementById('status-info').textContent = `Duplicated <${el.tagName.toLowerCase()}>`;
+      document.getElementById("status-info").textContent =
+        `Duplicated <${el.tagName.toLowerCase()}>`;
     }
   });
 
@@ -161,10 +172,11 @@ function init() {
     if (!canvas.isCornerMode) {
       // Activate — only if a rect is selected
       const el = canvas.selectedElement;
-      if (el && el.tagName.toLowerCase() === 'rect') {
+      if (el && el.tagName.toLowerCase() === "rect") {
         canvas.setCornerMode(true);
         cornerEditor.activate(el);
-        document.getElementById('status-info').textContent = 'Režim úpravy rohů — táhněte táhla pro změnu zaoblení';
+        document.getElementById("status-info").textContent =
+          "Režim úpravy rohů — táhněte táhla pro změnu zaoblení";
       }
     } else {
       canvas.setCornerMode(false);
@@ -174,69 +186,73 @@ function init() {
 
   // Importer
   new Importer((svgEl) => {
-    showScreen('editor-screen');
+    showScreen("editor-screen");
     canvas.loadSVG(svgEl);
     tree.build(canvas.getSVG());
     history.clear();
     saveSnapshot(); // Initial state
-    document.getElementById('status-info').textContent = 'SVG loaded successfully';
+    document.getElementById("status-info").textContent =
+      "SVG loaded successfully";
   });
 
   // ─── Top bar actions ───
 
   // Back button
-  document.getElementById('btn-back').addEventListener('click', () => {
-    if (confirm('Go back to import screen? Unsaved changes will be lost.')) {
-      showScreen('import-screen');
+  document.getElementById("btn-back").addEventListener("click", () => {
+    if (confirm("Go back to import screen? Unsaved changes will be lost.")) {
+      showScreen("import-screen");
       history.clear();
     }
   });
 
   // Theme toggle
-  document.getElementById('btn-theme').addEventListener('click', () => {
-    const isLight = document.documentElement.classList.toggle('theme-light');
-    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  document.getElementById("btn-theme").addEventListener("click", () => {
+    const isLight = document.documentElement.classList.toggle("theme-light");
+    localStorage.setItem("theme", isLight ? "light" : "dark");
   });
 
   // Undo
-  document.getElementById('btn-undo').addEventListener('click', () => {
+  document.getElementById("btn-undo").addEventListener("click", () => {
     const state = history.undo();
     if (state != null) restoreFromSnapshot(state);
   });
 
   // Redo
-  document.getElementById('btn-redo').addEventListener('click', () => {
+  document.getElementById("btn-redo").addEventListener("click", () => {
     const state = history.redo();
     if (state != null) restoreFromSnapshot(state);
   });
 
   // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener("keydown", (e) => {
     // Don't intercept when typing in inputs
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
 
-    if (e.ctrlKey && e.key === 'z') {
+    if (e.ctrlKey && e.key === "z") {
       e.preventDefault();
       const state = history.undo();
       if (state != null) restoreFromSnapshot(state);
     }
 
-    if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+    if (e.ctrlKey && (e.key === "y" || (e.shiftKey && e.key === "Z"))) {
       e.preventDefault();
       const state = history.redo();
       if (state != null) restoreFromSnapshot(state);
     }
 
-    if (e.key === 'm' || e.key === 'M') {
+    if (e.key === "m" || e.key === "M") {
       canvas.setMoveMode(!canvas.isMoveMode);
     }
 
-    if (e.key === 'r' || e.key === 'R') {
+    if (e.key === "r" || e.key === "R") {
       if (canvas.onCornerModeToggle) canvas.onCornerModeToggle();
     }
 
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-      if (canvas.selectedElement && canvas.selectedElement !== canvas.getSVG()) {
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (
+        canvas.selectedElement &&
+        canvas.selectedElement !== canvas.getSVG()
+      ) {
         const el = canvas.selectedElement;
         if (cornerEditor && cornerEditor.isActive) {
           cornerEditor.deactivate();
@@ -252,14 +268,16 @@ function init() {
   });
 
   // Attribute Help modal
-  const attrHelpModal = document.getElementById('attr-help-modal');
-  document.getElementById('btn-attr-help').addEventListener('click', () => {
+  const attrHelpModal = document.getElementById("attr-help-modal");
+  document.getElementById("btn-attr-help").addEventListener("click", () => {
     attrHelpModal.hidden = false;
   });
-  document.getElementById('btn-close-attr-help').addEventListener('click', () => {
-    attrHelpModal.hidden = true;
-  });
+  document
+    .getElementById("btn-close-attr-help")
+    .addEventListener("click", () => {
+      attrHelpModal.hidden = true;
+    });
 }
 
 // ─── Boot ───
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener("DOMContentLoaded", init);
